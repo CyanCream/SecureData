@@ -60,7 +60,7 @@ server <- function(input, output, session) {
 
         # If the password is correct, proceed with data processing
         pq_path <- "/srv/shiny-server/PullData/data/starwars"  # Use an absolute path
-        pq_path <- "S:/Research/CTSC/Biostatistics/BiostatDeptSuppprt/EzraMorrison/Shinyapp_Pulldata/data/starwars"
+        pq_path <- "C:/Users/yren/Documents/BiostatDeptSuppprt/EzraMorrison/Shinyapp_Pulldata/data/starwars"
         # Check if the directory exists and has the correct files
         if (!file.exists(pq_path)) {
             output$error_message <- renderText({
