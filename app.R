@@ -7,6 +7,9 @@ library(writexl)
 library(devtools)
 options("nwarnings")
 
+pkgload::load_all(".")
+myApp()
+
 myApp <- function(...) {
     # Define the UI using dashboardPage
     ui <- dashboardPage(
