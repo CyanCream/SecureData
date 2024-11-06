@@ -1,27 +1,21 @@
+# Load necessary libraries
 library(shiny)
 library(shinydashboard)
-library(arrow)
-library(dplyr)
-library(purrr)
-library(writexl)
-library(devtools)
-options("nwarnings")
 
-pkgload::load_all(".")
-myApp()
+# UI Module for Star Wars data processing and filtering
+mod_starwars_ui <- function(id) {
+    ns <- NS(id)  # Create namespace for module inputs/outputs
 
-myApp <- function(...) {
-    # Define the UI using dashboardPage
-    ui <- dashboardPage(
+    dashboardPage(
         dashboardHeader(title = "Star Wars Dataset Explorer"),
         dashboardSidebar(
             sidebarMenu(
                 menuItem("Data Processing", tabName = "data", icon = icon("table")),
-                numericInput("top_n", "Select Number of Rows to Display:", value = 5, min = 1, max = 100),
-                actionButton("process", "Process Data"),
-                actionButton("check_all", "Check All"),
-                actionButton("uncheck_all", "Uncheck All"),
-                uiOutput("homeworld_selector")
+                numericInput(ns("top_n"), "Select Number of Rows to Display:", value = 5, min = 1, max = 100),
+                actionButton(ns("process"), "Process Data"),
+                actionButton(ns("check_all"), "Check All"),
+                actionButton(ns("uncheck_all"), "Uncheck All"),
+                uiOutput(ns("homeworld_selector"))
             )
         ),
 
@@ -30,100 +24,121 @@ myApp <- function(...) {
                 tabItem(
                     tabName = "data",
                     h3("Head of the Filtered Star Wars Dataset"),
-                    p("The table below shows the first few rows of the filtered Star Wars dataset based on your selections.
-                       Use the 'Select Number of Rows to Display' option to adjust how many rows are shown."),
+                    p("The table below shows the first few rows of the filtered Star Wars dataset based on your selections."),
                     p("Choose homeworld(s) from the sidebar to filter the data, and use the action buttons to select or deselect all homeworlds."),
-                    tableOutput("head_table"),
-                    verbatimTextOutput("error_message"),  # To display any error messages
-                    selectInput("file_format", "Format to Download:", choices = c("CSV", "Excel"), selected = "CSV"),
-                    downloadButton("download_data", "Download")
+                    tableOutput(ns("head_table")),
+                    verbatimTextOutput(ns("error_message")),  # To display any error messages
+                    selectInput(ns("file_format"), "Format to Download:", choices = c("CSV", "Excel"), selected = "CSV"),
+                    downloadButton(ns("download_data"), "Download")
                 )
             )
         )
     )
+}
 
-    # Define server logic for the Shiny app
-    server <- function(input, output, session) {
-        starwars_data <- reactiveVal(NULL)
-        homeworlds <- reactiveVal(NULL)
 
-        # Initialize the error message output
-        output$error_message <- renderText({ "" })
 
-        observeEvent(input$process, {
-            pq_path <- "/srv/shiny-server/PullData/data/starwars"  # Use an absolute path
-            pq_path <- "C:/Users/yren/Documents/BiostatDeptSuppprt/EzraMorrison/Shinyapp_Pulldata/data/starwars"
-            # Check if the directory exists and has the correct files
-            if (!file.exists(pq_path)) {
-                output$error_message <- renderText({
-                    paste("Directory does not exist:", pq_path)
-                })
-                return(NULL)
-            }
 
-            # Try to open the dataset and handle any potential errors
-            tryCatch({
-                starwars2 <- open_dataset(sources = pq_path)
-                starwars_data(starwars2)
+# Server Module for Star Wars data processing and filtering
+mod_starwars_server <- function(input, output, session) {
+    # Reactive values for storing data and unique homeworlds
+    starwars_data <- reactiveVal(NULL)
+    homeworlds <- reactiveVal(NULL)
 
-                # Get the list of unique homeworlds for checkboxes
-                unique_homeworlds <- starwars2 |>
-                    distinct(homeworld) |>
-                    collect() |>
-                    pull(homeworld)
+    # Initialize error message output
+    output$error_message <- renderText({ "" })
 
-                homeworlds(unique_homeworlds)
+    # Process data on button click
+    observeEvent(input$process, {
+        pq_path <- "C:/Users/yren/Documents/github/SecureData/data_arrow/starwars"
 
-                output$homeworld_selector <- renderUI({
-                    checkboxGroupInput("homeworld", "Select Homeworld(s):",
-                                       choices = unique_homeworlds,
-                                       selected = unique_homeworlds)  # Select all by default
-                })
+        if (!file.exists(pq_path)) {
+            output$error_message <- renderText({
+                paste("Directory does not exist:", pq_path)
+            })
+            return(NULL)
+        }
 
-                output$error_message <- renderText("")  # Clear the error message if processing succeeds
-            }, error = function(e) {
-                output$error_message <- renderText({
-                    paste("Failed to load dataset:", e$message)
-                })
+        # Attempt to load and process the dataset
+        tryCatch({
+            starwars2 <- open_dataset(sources = pq_path)
+            starwars_data(starwars2)
+
+            # Extract unique homeworlds
+            unique_homeworlds <- starwars2 |>
+                distinct(homeworld) |>
+                collect() |>
+                pull(homeworld)
+
+            homeworlds(unique_homeworlds)
+
+            output$homeworld_selector <- renderUI({
+                checkboxGroupInput(ns("homeworld"), "Select Homeworld(s):",
+                                   choices = unique_homeworlds,
+                                   selected = unique_homeworlds)  # Select all by default
+            })
+
+            output$error_message <- renderText("")  # Clear error message on success
+        }, error = function(e) {
+            output$error_message <- renderText({
+                paste("Failed to load dataset:", e$message)
             })
         })
+    })
 
-        observeEvent(input$check_all, {
-            updateCheckboxGroupInput(session, "homeworld", selected = homeworlds())
-        })
+    # Check all homeworlds
+    observeEvent(input$check_all, {
+        updateCheckboxGroupInput(session, "homeworld", selected = homeworlds())
+    })
 
-        observeEvent(input$uncheck_all, {
-            updateCheckboxGroupInput(session, "homeworld", selected = character(0))
-        })
+    # Uncheck all homeworlds
+    observeEvent(input$uncheck_all, {
+        updateCheckboxGroupInput(session, "homeworld", selected = character(0))
+    })
 
-        output$head_table <- renderTable({
-            req(starwars_data(), input$homeworld, input$top_n)
+    # Render table of filtered data
+    output$head_table <- renderTable({
+        req(starwars_data(), input$homeworld, input$top_n)
 
-            starwars_data() |>
+        starwars_data() |>
+            filter(homeworld %in% input$homeworld) |>
+            head(n = input$top_n) |>
+            collect() |>
+            mutate(across(where(is.list), ~map_chr(., toString)))
+    })
+
+    # Handle data download
+    output$download_data <- downloadHandler(
+        filename = function() {
+            paste("starwars_data", Sys.Date(), if (input$file_format == "CSV") ".csv" else ".xlsx", sep = "")
+        },
+        content = function(file) {
+            filtered_data <- starwars_data() |>
                 filter(homeworld %in% input$homeworld) |>
-                head(n = input$top_n) |>
-                collect() |>
-                mutate(across(where(is.list), ~map_chr(., toString)))
-        })
+                collect()
 
-        output$download_data <- downloadHandler(
-            filename = function() {
-                paste("starwars_data", Sys.Date(), if (input$file_format == "CSV") ".csv" else ".xlsx", sep = "")
-            },
-            content = function(file) {
-                filtered_data <- starwars_data() |>
-                    filter(homeworld %in% input$homeworld) |>
-                    collect()
-
-                if (input$file_format == "CSV") {
-                    write.csv(filtered_data, file, row.names = FALSE)
-                } else {
-                    writexl::write_xlsx(filtered_data, file)
-                }
+            if (input$file_format == "CSV") {
+                write.csv(filtered_data, file, row.names = FALSE)
+            } else {
+                writexl::write_xlsx(filtered_data, file)
             }
-        )
-    }
-
-    # Run the application
-    shinyApp(ui = ui, server = server)
+        }
+    )
 }
+
+
+
+# Main App UI
+app_ui <- function() {
+    fluidPage(
+        mod_starwars_ui("starwars")
+    )
+}
+
+# Main App Server
+app_server <- function(input, output, session) {
+    callModule(mod_starwars_server, "starwars")
+}
+
+# Run the Shiny App
+shinyApp(ui = app_ui, server = app_server)
