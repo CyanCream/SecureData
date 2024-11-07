@@ -2,7 +2,7 @@ library(tidyverse)
 library(arrow)
 library(dplyr)
 
-pq_path <- paste0(getwd(),"/data_arrow/starwars")
+pq_path <- paste0(getwd(),"/data/starwars")
 
 dplyr::starwars|>
   dplyr::group_by(homeworld) |>

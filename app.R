@@ -50,7 +50,7 @@ mod_starwars_server <- function(input, output, session) {
 
     # Process data on button click
     observeEvent(input$process, {
-        pq_path <- "C:/Users/yren/Documents/github/SecureData/data_arrow/starwars"
+        pq_path <- "C:/Users/yren/Documents/github/SecureData/data/starwars"
 
         if (!file.exists(pq_path)) {
             output$error_message <- renderText({
