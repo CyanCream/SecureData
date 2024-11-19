@@ -2,8 +2,6 @@ library(shiny)
 library(shinydashboard)
 library(arrow)
 library(dplyr)
-library(purrr)
-library(writexl)
 
 # UI Module for Star Wars data processing and filtering
 mod_starwars_ui <- function(id) {
