@@ -70,14 +70,21 @@ mod_starwars_server <- function(input, output, session) {
     filtered_data <- starwars_data() |>
       filter(as.Date(record_date) >= start_date & as.Date(record_date) <= end_date) |>
       filter(homeworld %in% input$homeworld) |>
-      head(n = input$top_n) |>
-      mutate(across(where(is.list), ~map_chr(., toString)))
+      mutate(across(where(is.list), ~map_chr(., toString))) |>
+      collect()
 
     processed_data(filtered_data)
 
-    output$head_table <- renderTable({
+    output$head_table <- DT::renderDataTable({
       req(processed_data())
-      processed_data()
+      DT::datatable(
+        processed_data(),
+        options = list(
+          pageLength = input$top_n,
+          autoWidth = TRUE,
+          searchHighlight = TRUE
+        )
+      )
     })
   })
 

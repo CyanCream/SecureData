@@ -37,7 +37,7 @@ mod_starwars_ui <- function(id) {
           tabName = "data",
           h3("Filtered Star Wars Dataset"),
           p("Choose homeworld(s) from the sidebar, then click 'Show Table' to view filtered results."),
-          tableOutput(ns("head_table")),
+          DT::dataTableOutput(ns("head_table")),
           verbatimTextOutput(ns("error_message")),
           selectInput(ns("file_format"), "Format to Download:", choices = c("CSV", "Excel"), selected = "CSV"),
           downloadButton(ns("download_data"), "Download")

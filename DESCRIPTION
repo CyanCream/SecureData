@@ -20,4 +20,5 @@ Imports:
     golem,
     devtools,
     utils,
-    devtools
+    devtools,
+    DT
