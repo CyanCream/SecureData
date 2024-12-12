@@ -67,36 +67,35 @@ mod_starwars_server <- function(input, output, session) {
 
   # Process the filtered data and generate outputs
   observeEvent(input$process, {
-    req(filtered_data(), input$homeworld, input$top_n)
+    # Ensure filtered data exists and top_n is valid
+    req(filtered_data(), input$top_n)
 
+    # Check if homeworld is selected
+    if (is.null(input$homeworld)) {
+      output$head_table <- DT::renderDataTable({
+        DT::datatable(data.frame(Message = "No data selected"), options = list(dom = "t"))
+      })
+      output$bar_plot <- renderPlot({
+        plot.new()
+        title(main = "No data selected")
+      })
+      return()  # Exit the observer early if no homeworlds are selected
+    }
+
+    # Process the filtered data
     filtered_homeworld_data <- filtered_data() |>
-      filter(homeworld %in% input$homeworld)
+      filter(homeworld %in% input$homeworld) |>
+      mutate(across(where(is.list), ~map_chr(., toString)))
 
-    processed_data(filtered_homeworld_data)
+    if (nrow(filtered_homeworld_data) == 0) {
+      processed_data(NULL)
+    } else {
+      processed_data(filtered_homeworld_data)
+    }
 
+    # Update outputs
     output$head_table <- DT::renderDataTable({
-      req(processed_data())  # Ensure processed_data is defined
-
-      if (is.null(processed_data()) || nrow(processed_data()) == 0) {
-        # Define an empty data frame with the expected structure
-        empty_data <- data.frame(
-          Homeworld = character(0),
-          Character = character(0),
-          RecordDate = as.Date(character(0)) # Adjust column names and types as needed
-        )
-
-        # Render the empty table
-        return(DT::datatable(
-          empty_data,
-          options = list(
-            dom = "t",  # Show only the table
-            scrollX = TRUE,
-            pageLength = 10
-          )
-        ))
-      }
-
-      # Render the actual data table if data exists
+      req(processed_data())
       DT::datatable(
         processed_data(),
         options = list(
@@ -121,6 +120,7 @@ mod_starwars_server <- function(input, output, session) {
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
     })
   })
+
 
   # Download handler
   output$download_data <- downloadHandler(
