@@ -1,21 +1,12 @@
-#' The application server-side
-#'
-#' @param input,output,session Internal parameters for {shiny}.
-#'     DO NOT REMOVE.
-#' @import shiny utils
-#' @noRd
-#'
-#'
-
-utils::globalVariables(c("homeworld", "record_date"))
-
 mod_starwars_server <- function(input, output, session) {
   ns <- session$ns
 
   starwars_data <- reactiveVal(NULL)
+  filtered_data <- reactiveVal(NULL)
   homeworlds <- reactiveVal(NULL)
   processed_data <- reactiveVal(NULL)
 
+  # Load and filter dataset based on date range
   observe({
     pq_path <- paste0(getwd(), "/inst/extdata/starwars.parquet")
 
@@ -30,29 +21,6 @@ mod_starwars_server <- function(input, output, session) {
       starwars2 <- open_dataset(sources = pq_path)
       starwars_data(starwars2)
 
-      unique_homeworlds <- starwars2 |>
-        distinct(homeworld) |>
-        collect() |>
-        pull(homeworld)
-
-      homeworlds(unique_homeworlds)
-
-      output$homeworld_selector <- renderUI({
-        shinyWidgets::pickerInput(
-          ns("homeworld"),
-          label = "Select Homeworld(s):",
-          choices = unique_homeworlds,
-          selected = unique_homeworlds,
-          multiple = TRUE,
-          options = shinyWidgets::pickerOptions(
-            `actions-box` = TRUE,
-            `deselect-all-text` = "None",
-            `select-all-text` = "All",
-            dropupAuto = TRUE
-          )
-        )
-      })
-
       output$error_message <- renderText("")
     }, error = function(e) {
       output$error_message <- renderText({
@@ -61,33 +29,100 @@ mod_starwars_server <- function(input, output, session) {
     })
   })
 
-  observeEvent(input$process, {
-    req(starwars_data(), input$homeworld, input$top_n, input$dates)
+  # Filter by date range and update homeworlds
+  observe({
+    req(starwars_data(), input$dates)
 
     start_date <- as.Date(input$dates[1])
     end_date <- as.Date(input$dates[2])
 
-    filtered_data <- starwars_data() |>
+    date_filtered_data <- starwars_data() |>
       filter(as.Date(record_date) >= start_date & as.Date(record_date) <= end_date) |>
-      filter(homeworld %in% input$homeworld) |>
-      mutate(across(where(is.list), ~map_chr(., toString))) |>
       collect()
 
-    processed_data(filtered_data)
+    filtered_data(date_filtered_data)
 
-    output$head_table <- DT::renderDataTable({
-      req(processed_data())
-      DT::datatable(
-        processed_data(),
-        options = list(
-          pageLength = input$top_n,
-          autoWidth = TRUE,
-          searchHighlight = TRUE
+    unique_homeworlds <- date_filtered_data |>
+      distinct(homeworld) |>
+      pull(homeworld)
+
+    homeworlds(unique_homeworlds)
+
+    output$homeworld_selector <- renderUI({
+      shinyWidgets::pickerInput(
+        ns("homeworld"),
+        label = "Select Homeworld(s):",
+        choices = unique_homeworlds,
+        selected = unique_homeworlds,
+        multiple = TRUE,
+        options = shinyWidgets::pickerOptions(
+          `actions-box` = TRUE,
+          `deselect-all-text` = "None",
+          `select-all-text` = "All",
+          dropupAuto = TRUE
         )
       )
     })
   })
 
+  # Process the filtered data and generate outputs
+  observeEvent(input$process, {
+    req(filtered_data(), input$homeworld, input$top_n)
+
+    filtered_homeworld_data <- filtered_data() |>
+      filter(homeworld %in% input$homeworld)
+
+    processed_data(filtered_homeworld_data)
+
+    output$head_table <- DT::renderDataTable({
+      req(processed_data())  # Ensure processed_data is defined
+
+      if (is.null(processed_data()) || nrow(processed_data()) == 0) {
+        # Define an empty data frame with the expected structure
+        empty_data <- data.frame(
+          Homeworld = character(0),
+          Character = character(0),
+          RecordDate = as.Date(character(0)) # Adjust column names and types as needed
+        )
+
+        # Render the empty table
+        return(DT::datatable(
+          empty_data,
+          options = list(
+            dom = "t",  # Show only the table
+            scrollX = TRUE,
+            pageLength = 10
+          )
+        ))
+      }
+
+      # Render the actual data table if data exists
+      DT::datatable(
+        processed_data(),
+        options = list(
+          pageLength = input$top_n,
+          autoWidth = TRUE,
+          searchHighlight = TRUE,
+          scrollX = TRUE
+        )
+      )
+    })
+
+    output$bar_plot <- renderPlot({
+      req(processed_data())
+      ggplot(processed_data(), aes(x = homeworld)) +
+        geom_bar(fill = "steelblue") +
+        theme_minimal() +
+        labs(
+          title = "Count of Characters by Homeworld",
+          x = "Homeworld",
+          y = "Count"
+        ) +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    })
+  })
+
+  # Download handler
   output$download_data <- downloadHandler(
     filename = function() {
       paste("starwars_data", Sys.Date(), if (input$file_format == "CSV") ".csv" else ".xlsx", sep = "")

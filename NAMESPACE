@@ -3,6 +3,7 @@
 export(run_app)
 import(arrow)
 import(dplyr)
+import(ggplot2)
 import(shiny)
 import(shinydashboard)
 import(utils)

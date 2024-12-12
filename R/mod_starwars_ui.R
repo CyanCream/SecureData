@@ -20,8 +20,9 @@ mod_starwars_ui <- function(id) {
     dashboardSidebar(
       sidebarMenu(
         menuItem("Data Processing", tabName = "data", icon = icon("table")),
+        menuItem("Bar Plot", tabName = "plot", icon = icon("chart-bar")),
         numericInput(ns("top_n"), "Select Number of Rows to Display:", value = 5, min = 1, max = 100),
-        actionButton(ns("process"), "Show Table"),
+        actionButton(ns("process"), "Apply Filter"),
         dateRangeInput(
           ns("dates"),
           label = "Record Creation Dates to Include:",
@@ -33,14 +34,23 @@ mod_starwars_ui <- function(id) {
     ),
     dashboardBody(
       tabItems(
+        # Page for Data Processing
         tabItem(
           tabName = "data",
           h3("Filtered Star Wars Dataset"),
-          p("Choose homeworld(s) from the sidebar, then click 'Show Table' to view filtered results."),
+          p("Choose homeworld(s) from the sidebar, then click 'Apply Filter' to view filtered results."),
           DT::dataTableOutput(ns("head_table")),
           verbatimTextOutput(ns("error_message")),
           selectInput(ns("file_format"), "Format to Download:", choices = c("CSV", "Excel"), selected = "CSV"),
           downloadButton(ns("download_data"), "Download")
+        ),
+        # Page for Bar Plot
+        tabItem(
+          tabName = "plot",
+          h3("Filtered Star Wars Dataset - Frequency Bar Plot"),
+          p("Choose homeworld(s) from the sidebar, then click 'Apply Filter' to view the bar plot with the filtered results."),
+          p("This figure displays the frequency of characters' homeworlds within the selected range."),
+          plotOutput(ns("bar_plot"))
         )
       )
     )
