@@ -1,6 +1,10 @@
-library(shinydashboard)
-library(dplyr)
-library(arrow)
+#' The application User-Interface
+#'
+#' @param request Internal parameter for `{shiny}`.
+#'     DO NOT REMOVE.
+#' @import shiny shinydashboard dplyr arrow
+#' @importFrom shinyWidgets pickerInput
+#' @noRd
 
 mod_starwars_ui <- function(id) {
   ns <- NS(id)

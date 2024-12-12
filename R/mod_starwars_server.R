@@ -1,5 +1,13 @@
-library(dplyr)
-library(arrow)
+#' The application server-side
+#'
+#' @param input,output,session Internal parameters for {shiny}.
+#'     DO NOT REMOVE.
+#' @import shiny utils
+#' @noRd
+#'
+#'
+
+utils::globalVariables(c("homeworld", "record_date"))
 
 mod_starwars_server <- function(input, output, session) {
   ns <- session$ns
